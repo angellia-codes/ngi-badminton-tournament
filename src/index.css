@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* Nourish brand palette. The PRD listed #1820F and #dc1e6, which are invalid
+   5-character hex codes; these are the corrected values Angel confirmed. */
+@theme {
+  --color-navy: #18202f;
+  --color-slate: #68748a;
+  --color-mist: #dce1e6;
+  --color-cream: #f4f7f2;
+  --color-copper: #b8734f;
+
+  /* Three roles, three families:
+     - display (Oswald): headings and category names. Condensed, so long
+       category labels like "Nourish Uluwatu + The Bakery Uluwatu" survive a
+       narrow phone without wrapping.
+     - sans (Work Sans): body copy and every form control.
+     - mono (Space Mono): scores only. Tabular by construction, so a rally from
+       9 to 10 doesn't shift the layout. */
+  --font-display: "Oswald", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-sans: "Work Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+html {
+  background-color: var(--color-navy);
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background-color: var(--color-navy);
+  color: var(--color-cream);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Oswald is a condensed display face — it carries a heading on its own, so
+   headings pick up the family and a little tracking by default rather than
+   repeating two utility classes on every h1/h2/h3. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Phones are the primary device at the venue: keep tap targets honest and stop
+   iOS zooming the page when a form field is focused. */
+input,
+select,
+button {
+  font-size: 16px;
+  font-family: var(--font-sans);
+}
+
+/* Scores are read across a court, not on a desk. Space Mono at display sizes
+   needs the digits pulled together or they read as separate numbers. */
+.score {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
