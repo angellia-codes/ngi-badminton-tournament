@@ -128,8 +128,12 @@ const db = createClient(
 );
 
 async function login(payload: { pin?: string }) {
-  const adminPin = Deno.env.get("ADMIN_PIN");
-  const refereePin = Deno.env.get("REFEREE_PIN");
+  // Trimmed on both sides of the comparison. Pasting a PIN into the Supabase
+  // dashboard, or setting it with `--env-file`, easily carries a trailing
+  // newline; without this the secret can never match and the only symptom is a
+  // permanent "Incorrect PIN".
+  const adminPin = Deno.env.get("ADMIN_PIN")?.trim();
+  const refereePin = Deno.env.get("REFEREE_PIN")?.trim();
   if (!adminPin || !refereePin) throw new HttpError("Server PINs are not configured", 500);
 
   const pin = (payload.pin ?? "").trim();
