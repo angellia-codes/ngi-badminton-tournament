@@ -104,23 +104,15 @@ export function useBoard(): Board {
   };
 }
 
-/** The match that decides a category: the reset if one was needed, else the grand final. */
+/** The match that decides a category. */
 export function finalMatch(matches: Match[], categoryId: string): Match | undefined {
-  const inCategory = matches.filter((m) => m.category_id === categoryId);
-  return (
-    inCategory.find((m) => m.bracket_type === "grand_final_reset") ??
-    inCategory.find((m) => m.bracket_type === "grand_final")
-  );
+  return matches.find((m) => m.category_id === categoryId && m.bracket_type === "grand_final");
 }
 
-/** Sets won by each side, used to show "2–1" alongside the per-set scores. */
-export function setsWon(sets: MatchSet[] = []) {
-  let a = 0;
-  let b = 0;
-  for (const s of sets) {
-    if (!s.is_complete) continue;
-    if (s.score_a > s.score_b) a++;
-    else if (s.score_b > s.score_a) b++;
-  }
-  return { a, b };
+/**
+ * The one game a match consists of. Every match has exactly one row in
+ * match_sets, created lazily by the first point; until then there is none.
+ */
+export function gameOf(sets: MatchSet[] = []): MatchSet | undefined {
+  return sets[0];
 }

@@ -39,6 +39,9 @@ A public-facing form allowing players to sign up for the tournament.
     * Ensure all required fields are filled before form submission.
 
 ### 3.2. Double-Elimination Bracket Management
+
+> **Superseded (2026-09-11).** The format was changed to **single elimination, one game to 21 points** — no Lower Bracket, no Grand Final Reset, no 3rd place playoff, and the winner is derived from the score rather than picked by the referee. Sections 3.2 and 3.3 below describe the original requirement and are kept as history. See `README.md` and `docs/badminton-tournament-design.md` for what is built.
+
 An automated system to track progression through the Upper (Winners) and Lower (Losers) brackets.
 
 * **Initial Seeding (Admin):** Admins generate the first round of matchups in the Upper Bracket.

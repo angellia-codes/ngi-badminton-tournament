@@ -1,5 +1,5 @@
 import { useBoardContext } from "../lib/BoardProvider";
-import { setsWon } from "../lib/data";
+import { gameOf } from "../lib/data";
 import { teamName } from "../lib/types";
 
 /**
@@ -24,9 +24,7 @@ export default function Live() {
   return (
     <div className="space-y-4">
       {onCourt.map((match) => {
-        const sets = setsByMatch[match.id] ?? [];
-        const current = sets.filter((s) => !s.is_complete).at(-1) ?? sets.at(-1);
-        const tally = setsWon(sets);
+        const game = gameOf(setsByMatch[match.id]);
         const a = registrationsById[match.registration_a_id!];
         const b = registrationsById[match.registration_b_id!];
         const categoryName = categories.find((c) => c.id === match.category_id)?.name;
@@ -37,23 +35,15 @@ export default function Live() {
               <span className="truncate">
                 {categoryName} · {match.label}
               </span>
-              <span className="shrink-0">
-                Set {current?.set_number ?? 1} · Sets {tally.a}–{tally.b}
-              </span>
+              <span className="shrink-0">First to 21</span>
             </header>
 
             <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2">
               <span className="truncate font-medium">{teamName(a)}</span>
-              <span className="score text-5xl text-copper">{current?.score_a ?? 0}</span>
+              <span className="score text-5xl text-copper">{game?.score_a ?? 0}</span>
               <span className="truncate font-medium">{teamName(b)}</span>
-              <span className="score text-5xl text-copper">{current?.score_b ?? 0}</span>
+              <span className="score text-5xl text-copper">{game?.score_b ?? 0}</span>
             </div>
-
-            {sets.length > 1 && (
-              <p className="score mt-3 text-xs text-slate">
-                {sets.map((s) => `${s.score_a}–${s.score_b}`).join("  ·  ")}
-              </p>
-            )}
           </article>
         );
       })}

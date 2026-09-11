@@ -29,7 +29,7 @@
 
 3. **Doubles players: free text, not normalized.** `registrations.player_1_name` / `player_2_name`, no `players` table. A normalized player entity was rejected because the form has no unique identifier (e.g. employee ID) to reliably match names across submissions/years — building the join would create false confidence, not real cross-year tracking.
 
-4. **Bracket progression: hybrid.** Generic Upper/Lower Bracket routing (winner/loser into their pre-assigned next match) lives in a Postgres trigger — stays correct even under manual DB edits. The Grand Final Reset conditional (spawn a second match only if the Lower Bracket-origin side wins game 1) lives in an Edge Function, since that logic doesn't belong in a SQL trigger.
+4. **Bracket progression: a Postgres trigger.** The winner goes into their pre-assigned next match; there is no loser destination, and the trigger already reads a null one as elimination. Living in the database keeps it correct even under manual DB edits. (Superseded: the format was double elimination with a Grand Final Reset, which needed a matching Edge Function conditional. Single elimination removed both.)
 
 5. **Business rule: one approved registration per (tournament, category, outlet).** Enforced via partial unique index on `registrations` WHERE status='approved'. Multiple pending submissions from the same outlet/category are allowed; only approval is blocked — admin must explicitly choose/reject rather than first-submission-wins.
 
@@ -84,7 +84,7 @@ WHERE status = 'approved';
 |---|---|---|
 | id | uuid, pk | |
 | tournament_id, category_id | fk | |
-| bracket_type | enum(upper/lower/grand_final/grand_final_reset) | |
+| bracket_type | enum(upper/lower/grand_final/grand_final_reset) | Single elimination uses `upper` for earlier rounds and `grand_final` for the final; `lower` and `grand_final_reset` are left in the enum unused. |
 | round_number | int | |
 | registration_a_id, registration_b_id | fk, nullable | null = bye or unfilled |
 | winner_registration_id, loser_registration_id | fk, nullable | |
@@ -97,7 +97,7 @@ WHERE status = 'approved';
 |---|---|---|
 | id | uuid, pk | |
 | match_id | fk | |
-| set_number | int | |
+| set_number | int | Always 1 — a match is one game to 21. Column kept rather than dropped. |
 | score_a, score_b | int | |
 | is_complete | boolean | |
 
@@ -109,15 +109,17 @@ WHERE status = 'approved';
 - Public SELECT on `registrations` is scoped to `status = 'approved'` only (pending queue not publicly visible — flagged assumption).
 
 ## Mechanics
-- Bracket routing: `AFTER UPDATE` trigger on `matches`, fires on winner/loser transition from null → set.
-- Grand Final Reset: handled in `referee-submit-result` Edge Function, not the trigger.
-- Byes: single-sided match auto-completes and routes forward on creation.
+- Format: single elimination, one game to 21 per match.
+- Bracket routing: `AFTER UPDATE` trigger on `matches`, fires on winner transition from null → set.
+- Winner selection: derived from the score in `bump_score` — first to 21, win by two, hard cap at 30. The winning increment closes the match in the same statement, which fires the routing trigger.
+- Byes: with three entrants the top seed is placed directly in the final's slot A at seed time.
 - Seeding: manual, admin-only, no auto-shuffle.
-- Winner selection: referee-selected explicitly, not derived from set scores.
+- Escape hatches: `submit_result` awards a walkover/retirement; `undo_result` reopens a finished match and pulls its winner back out of the next match (refused once that next match has been played).
 
 ## Explicit Non-Goals (this iteration)
 - No cross-year player identity tracking (would require an Employee ID field on the form — not requested)
-- No auto-derivation of match winner from badminton scoring rules (best-of-3-to-21, 30-cap) — referee decides
+- No best-of-3. A match is a single game; the 21 / win-by-2 / 30-cap rule is enforced in `bump_score`
+- No 3rd place playoff — semifinal losers are eliminated
 - No random/automated Round 1 seeding
 - No separate PINs for "approve registrations" vs "seed matches" (both are Admin-scoped) or for "score" vs "submit result" (both Referee-scoped) — single PIN per role as confirmed
 

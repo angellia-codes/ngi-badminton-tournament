@@ -204,7 +204,8 @@ function AdminBody() {
           Draw
         </h2>
         <p className="mt-1 text-xs text-slate">
-          Order the approved entries, then seed. Positions 1 and 2 meet in the first match.
+          Order the approved entries, then seed. Positions 1 and 2 meet in the first match —
+          except with three entries, where position 1 takes a bye straight to the final.
         </p>
         <div className="mt-3 space-y-3">
           {categories.map((c) => (

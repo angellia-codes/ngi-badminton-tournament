@@ -84,22 +84,14 @@ export default function Brackets() {
       ) : (
         <>
           <Section
-            title="Upper bracket"
+            title="Bracket"
             matches={inCategory.filter((m) => m.bracket_type === "upper")}
             registrationsById={registrationsById}
             setsByMatch={setsByMatch}
           />
           <Section
-            title="Lower bracket"
-            matches={inCategory.filter((m) => m.bracket_type === "lower")}
-            registrationsById={registrationsById}
-            setsByMatch={setsByMatch}
-          />
-          <Section
-            title="Finals"
-            matches={inCategory.filter(
-              (m) => m.bracket_type === "grand_final" || m.bracket_type === "grand_final_reset",
-            )}
+            title="Final"
+            matches={inCategory.filter((m) => m.bracket_type === "grand_final")}
             registrationsById={registrationsById}
             setsByMatch={setsByMatch}
           />

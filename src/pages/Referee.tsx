@@ -2,25 +2,18 @@ import { useState } from "react";
 import { PinGate } from "../components/PinGate";
 import { useBoardContext } from "../lib/BoardProvider";
 import { callApi, useAction } from "../lib/api";
-import { setsWon } from "../lib/data";
+import { gameOf } from "../lib/data";
 import { teamName, type Match } from "../lib/types";
 
-/** The set being played: the last unfinished one, else the next one to start. */
-function currentSetNumber(sets: { set_number: number; is_complete: boolean }[]) {
-  const open = sets.filter((s) => !s.is_complete).at(-1);
-  if (open) return open.set_number;
-  return sets.length === 0 ? 1 : Math.max(...sets.map((s) => s.set_number)) + 1;
-}
+/** A match is one game, so there is only ever set number 1. */
+const SET_NUMBER = 1;
 
 function Scoreboard({ match, onDone }: { match: Match; onDone: () => void }) {
   const { registrationsById, setsByMatch, categories } = useBoardContext();
   const { busy, error, run } = useAction();
   const [winnerId, setWinnerId] = useState("");
 
-  const sets = setsByMatch[match.id] ?? [];
-  const setNumber = currentSetNumber(sets);
-  const current = sets.find((s) => s.set_number === setNumber);
-  const tally = setsWon(sets);
+  const game = gameOf(setsByMatch[match.id]);
 
   const a = registrationsById[match.registration_a_id!];
   const b = registrationsById[match.registration_b_id!];
@@ -30,7 +23,7 @@ function Scoreboard({ match, onDone }: { match: Match; onDone: () => void }) {
     void run(() =>
       callApi("update_score", {
         match_id: match.id,
-        set_number: setNumber,
+        set_number: SET_NUMBER,
         side,
         delta,
       }),
@@ -38,7 +31,7 @@ function Scoreboard({ match, onDone }: { match: Match; onDone: () => void }) {
 
   const sideRow = (side: "a" | "b") => {
     const reg = side === "a" ? a : b;
-    const score = (side === "a" ? current?.score_a : current?.score_b) ?? 0;
+    const score = (side === "a" ? game?.score_a : game?.score_b) ?? 0;
     return (
       <div className="rounded-xl border border-slate/30 bg-slate/10 p-3">
         <p className="truncate text-sm font-medium">{teamName(reg)}</p>
@@ -80,7 +73,7 @@ function Scoreboard({ match, onDone }: { match: Match; onDone: () => void }) {
       <header>
         <h2 className="text-lg uppercase tracking-[0.06em]">{categoryName}</h2>
         <p className="font-display text-xs uppercase tracking-[0.1em] text-slate">
-          {match.label} · Set {setNumber} · Sets won {tally.a}–{tally.b}
+          {match.label} · First to 21, win by 2, cap 30
         </p>
       </header>
 
@@ -89,21 +82,15 @@ function Scoreboard({ match, onDone }: { match: Match; onDone: () => void }) {
 
       {error && <p className="text-sm text-copper">{error}</p>}
 
-      <button
-        type="button"
-        disabled={busy || !current}
-        onClick={() =>
-          void run(() => callApi("complete_set", { match_id: match.id, set_number: setNumber }))
-        }
-        className="w-full rounded-xl border border-slate/40 px-4 py-3 font-display text-sm uppercase tracking-[0.1em] disabled:opacity-40"
-      >
-        Finish set {setNumber}
-      </button>
+      <p className="text-xs text-slate">
+        The match closes itself the moment the game is won, and the bracket advances.
+      </p>
 
-      <div className="rounded-xl border border-copper/40 bg-copper/5 p-3">
-        <p className="text-sm font-medium">Submit match result</p>
+      <details className="rounded-xl border border-copper/40 bg-copper/5 p-3">
+        <summary className="cursor-pointer text-sm font-medium">Walkover or retirement</summary>
         <p className="mt-1 text-xs text-slate">
-          The referee decides the winner — the app does not infer it from the scores.
+          Only for a match that never finishes on court — a walkover, a retirement or an injury.
+          A game played out to 21 needs nothing here.
         </p>
         <div className="mt-2 space-y-1">
           {[a, b].map((reg) => (
@@ -123,7 +110,7 @@ function Scoreboard({ match, onDone }: { match: Match; onDone: () => void }) {
           type="button"
           disabled={busy || !winnerId}
           onClick={() => {
-            if (!confirm(`Confirm ${teamName(registrationsById[winnerId])} wins? This advances the bracket.`)) return;
+            if (!confirm(`Award the match to ${teamName(registrationsById[winnerId])}? This advances the bracket.`)) return;
             void run(() =>
               callApi("submit_result", {
                 match_id: match.id,
@@ -133,10 +120,56 @@ function Scoreboard({ match, onDone }: { match: Match; onDone: () => void }) {
           }}
           className="mt-3 w-full rounded-xl bg-copper px-4 py-3.5 font-display text-base uppercase tracking-[0.12em] text-navy disabled:opacity-40"
         >
-          Submit result
+          Award match
         </button>
-      </div>
+      </details>
     </div>
+  );
+}
+
+/**
+ * The score decides the match now, so a mistapped +1 ends it. Finished matches
+ * stay listed with a way back, until the next match has been played.
+ */
+function Finished({ matches }: { matches: Match[] }) {
+  const { registrationsById, categories } = useBoardContext();
+  const { busy, error, run } = useAction();
+
+  if (matches.length === 0) return null;
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate">Finished</h2>
+      {error && <p className="mt-2 text-sm text-copper">{error}</p>}
+      <ul className="mt-3 space-y-2">
+        {matches.map((m) => (
+          <li
+            key={m.id}
+            className="flex items-center gap-3 rounded-xl border border-slate/30 bg-slate/10 p-3"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-xs uppercase tracking-[0.1em] text-slate">
+                {categories.find((c) => c.id === m.category_id)?.name} · {m.label}
+              </p>
+              <p className="mt-1 truncate text-sm">
+                {teamName(registrationsById[m.winner_registration_id!])} won
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (!confirm("Undo this result? The bracket rolls back and the match reopens.")) return;
+                void run(() => callApi("undo_result", { match_id: m.id }));
+              }}
+              className="shrink-0 rounded-lg border border-copper px-3 py-1.5 text-sm text-copper disabled:opacity-40"
+            >
+              Undo
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -146,42 +179,47 @@ function RefereeBody() {
 
   if (loading) return <p className="text-slate">Loading…</p>;
 
-  const selected = matches.find((m) => m.id === selectedId);
+  // Dropping a finished match here is what returns the referee to the list the
+  // moment the game closes itself.
+  const selected = matches.find((m) => m.id === selectedId && !m.is_complete);
   if (selected) return <Scoreboard match={selected} onDone={() => setSelectedId(null)} />;
 
   const ready = matches.filter(
     (m) => !m.is_complete && m.registration_a_id && m.registration_b_id,
   );
-
-  if (ready.length === 0) {
-    return (
-      <p className="text-sm text-slate">
-        No match is ready to score. A match becomes available once both sides are decided.
-      </p>
-    );
-  }
+  const finished = matches.filter((m) => m.is_complete);
 
   return (
-    <ul className="space-y-2">
-      {ready.map((m) => (
-        <li key={m.id}>
-          <button
-            type="button"
-            onClick={() => setSelectedId(m.id)}
-            className="w-full rounded-xl border border-slate/30 bg-slate/10 p-3 text-left transition hover:border-copper"
-          >
-            <p className="font-display text-xs uppercase tracking-[0.1em] text-slate">
-              {categories.find((c) => c.id === m.category_id)?.name} · {m.label}
-            </p>
-            <p className="mt-1 truncate text-sm">
-              {teamName(registrationsById[m.registration_a_id!])}
-              <span className="px-2 text-slate">vs</span>
-              {teamName(registrationsById[m.registration_b_id!])}
-            </p>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <>
+      {ready.length === 0 ? (
+        <p className="text-sm text-slate">
+          No match is ready to score. A match becomes available once both sides are decided.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {ready.map((m) => (
+            <li key={m.id}>
+              <button
+                type="button"
+                onClick={() => setSelectedId(m.id)}
+                className="w-full rounded-xl border border-slate/30 bg-slate/10 p-3 text-left transition hover:border-copper"
+              >
+                <p className="font-display text-xs uppercase tracking-[0.1em] text-slate">
+                  {categories.find((c) => c.id === m.category_id)?.name} · {m.label}
+                </p>
+                <p className="mt-1 truncate text-sm">
+                  {teamName(registrationsById[m.registration_a_id!])}
+                  <span className="px-2 text-slate">vs</span>
+                  {teamName(registrationsById[m.registration_b_id!])}
+                </p>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Finished matches={finished} />
+    </>
   );
 }
 

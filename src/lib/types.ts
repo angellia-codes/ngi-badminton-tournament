@@ -1,6 +1,12 @@
 export type Slot = "a" | "b";
 export type Role = "admin" | "referee";
 export type RegistrationStatus = "pending" | "approved" | "rejected";
+/**
+ * Mirrors the DB enum. Single elimination only uses `upper` (earlier rounds)
+ * and `grand_final` (the final); `lower` and `grand_final_reset` are leftovers
+ * from the double-elimination format, kept because rewriting an enum on a
+ * foreign-keyed table buys nothing.
+ */
 export type BracketType = "upper" | "lower" | "grand_final" | "grand_final_reset";
 
 export type Tournament = {

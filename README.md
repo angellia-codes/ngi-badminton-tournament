@@ -26,11 +26,11 @@ npm run dev
 | Route | Who | What |
 |---|---|---|
 | `/` | anyone | Registration form. Doubles categories require both names. |
-| `/brackets` | anyone | Upper / lower / finals per category, live. |
+| `/brackets` | anyone | Single-elimination draw per category, live. |
 | `/live` | anyone | Scoreboard for matches on court, live. |
 | `/hall-of-fame` | anyone | Winner and runner-up per category. |
 | `/admin` | admin PIN | Approve or reject entries, order the draw, seed and clear brackets. |
-| `/referee` | referee PIN | `+1` / `-1` scoring, finish a set, submit the match result. |
+| `/referee` | referee PIN | `+1` / `-1` scoring, award a walkover, undo a result. |
 
 ## How access works
 
@@ -58,21 +58,30 @@ Rotating `SESSION_SECRET` signs everyone out immediately.
 
 ## Brackets
 
+**Single elimination. One game to 21 per match.** Lose once and you are out.
+
 A category is capped at four entrants — one approved entry per outlet, and there
 are four outlets — so the seeder holds the three possible shapes (2, 3 and 4
-entrants) as literal templates rather than a general algorithm.
+entrants) as literal templates rather than a general algorithm. With three
+entrants the top seed takes a bye straight to the final.
 
-Two pieces of logic split deliberately:
+**Routing** is a Postgres trigger (`matches_route_result`), so it stays correct
+even if a match is edited directly in the dashboard. It sends the winner to
+`next_match_winner_id`; a match has no loser destination, and the trigger already
+reads that as elimination.
 
-- **Routing** (winner up, loser down) is a Postgres trigger, so it stays correct
-  even if a match is edited directly in the dashboard.
-- **The Grand Final Reset** is in the Edge Function, because it creates a match
-  conditionally rather than routing an existing one. Grand final slot A is
-  always the upper-bracket champion and slot B the lower-bracket challenger; the
-  reset only fires when slot B wins.
+**The result is decided by the score**, in `bump_score`. The rule is BWF rally
+scoring — first to 21, win by two, hard cap at 30 — so the increment that wins
+the game also closes the match and fires the routing trigger, in one statement.
+The `+1` a referee taps is the only input.
 
-The referee picks the winner explicitly — the app never derives it from the
-scores, so an unusual finish (retirement, walkover) needs no special case.
+Two escape hatches, both on `/referee`:
+
+- **Award match** (`submit_result`) for a finish that never happens on court — a
+  walkover, a retirement, an injury.
+- **Undo** (`undo_result`) reopens a finished match and pulls its winner back out
+  of the next match. It refuses once that next match has itself been played;
+  undo that one first.
 
 ## Layout
 

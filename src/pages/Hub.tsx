@@ -59,7 +59,7 @@ type ModuleCard = {
 
 const MODULES: ModuleCard[] = [
   { to: "/register", title: "Register", blurb: "Competitor sign-up & intake", icon: "register" },
-  { to: "/brackets", title: "Brackets", blurb: "Double-elimination draw", icon: "brackets" },
+  { to: "/brackets", title: "Brackets", blurb: "Single-elimination draw", icon: "brackets" },
   { to: "/live", title: "Live", blurb: "Court-side score board", icon: "live" },
   { to: "/hall-of-fame", title: "Winners", blurb: "Champions & hall of fame", icon: "winners" },
   { to: "/referee", title: "Referee", blurb: "Match scoring tablet", icon: "referee", staff: true },
@@ -142,7 +142,7 @@ export default function Hub() {
 
         <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-slate">
           Internal badminton competition across Nourish Group Indonesia outlets.
-          Registration → Double Elimination → Grand Final → Champion.
+          Registration → Single Elimination → Final → Champion.
         </p>
 
         <StatusPill />
