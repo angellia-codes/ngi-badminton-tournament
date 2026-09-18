@@ -25,11 +25,12 @@ npm run dev
 
 | Route | Who | What |
 |---|---|---|
-| `/` | anyone | Registration form. Doubles categories require both names. |
+| `/` | anyone | Module hub. |
+| `/register` | anyone | Event details, rules, and the entry form. Doubles categories require both names; each player says whether they bring their own racket. |
 | `/brackets` | anyone | Single-elimination draw per category, live. |
 | `/live` | anyone | Scoreboard for matches on court, live. |
 | `/hall-of-fame` | anyone | Winner and runner-up per category. |
-| `/admin` | admin PIN | Approve or reject entries, order the draw, seed and clear brackets. |
+| `/admin` | admin PIN | Approve or reject entries, count the rackets to prepare, order the draw, seed and clear brackets. |
 | `/referee` | referee PIN | `+1` / `-1` scoring, award a walkover, undo a result. |
 
 ## How access works
@@ -87,9 +88,10 @@ Two escape hatches, both on `/referee`:
 
 ```
 src/
-  lib/        supabase client, api client + session, board data hook, types
+  lib/        supabase client, api client + session, board data hook, types,
+              event details + rules copy (event.ts)
   pages/      Register, Brackets, Live, HallOfFame, Admin, Referee
-  components/ PinGate, MatchCard
+  components/ PinGate, MatchCard, EventInfo
 supabase/
   migrations/ schema, constraints, RLS, routing trigger, realtime + seed, bump_score
   functions/tournament-api/   the one privileged endpoint
