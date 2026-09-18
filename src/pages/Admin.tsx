@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { PinGate } from "../components/PinGate";
 import { useBoardContext } from "../lib/BoardProvider";
 import { callApi, useAction, useSession } from "../lib/api";
-import { teamName, type Category, type Registration } from "../lib/types";
+import {
+  playerCount,
+  racketsNeeded,
+  teamName,
+  type Category,
+  type Registration,
+} from "../lib/types";
 
 function Queue({
   registrations,
@@ -34,6 +40,11 @@ function Queue({
               <p className="text-xs text-slate">
                 {r.category?.name} · {r.outlet?.name}
               </p>
+              <p className="text-xs text-slate">
+                {racketsNeeded(r) === 0
+                  ? `Brings own racket${playerCount(r) > 1 ? "s" : ""}`
+                  : `Needs ${racketsNeeded(r)} racket${racketsNeeded(r) > 1 ? "s" : ""}`}
+              </p>
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"
@@ -64,6 +75,64 @@ function Queue({
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/**
+ * What the committee has to bring or rent on the day. Counted per player, not
+ * per entry, so a pair where one player owns a racket counts as one.
+ *
+ * Approved entries are the number to book against; pending entries are shown
+ * separately so the booking can be sized before the queue is cleared.
+ */
+function Equipment({ registrations }: { registrations: Registration[] }) {
+  const approved = registrations.filter((r) => r.status === "approved");
+  const pending = registrations.filter((r) => r.status === "pending");
+
+  const total = (rows: Registration[], of: (r: Registration) => number) =>
+    rows.reduce((sum, r) => sum + of(r), 0);
+
+  const rackets = total(approved, racketsNeeded);
+  const players = total(approved, playerCount);
+  const pendingRackets = total(pending, racketsNeeded);
+
+  const byOutlet = approved.reduce<Record<string, number>>((acc, r) => {
+    const name = r.outlet?.name ?? "Unknown outlet";
+    acc[name] = (acc[name] ?? 0) + racketsNeeded(r);
+    return acc;
+  }, {});
+
+  return (
+    <section>
+      <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate">Equipment</h2>
+
+      <div className="mt-3 rounded-xl border border-slate/30 bg-slate/10 p-3">
+        <p className="text-sm">
+          <span className="font-display text-2xl text-copper">{rackets}</span>{" "}
+          <span className="text-slate">
+            racket{rackets === 1 ? "" : "s"} to prepare — {players} approved player
+            {players === 1 ? "" : "s"}
+          </span>
+        </p>
+
+        {Object.keys(byOutlet).length > 0 && (
+          <ul className="mt-2 space-y-0.5">
+            {Object.entries(byOutlet).map(([name, count]) => (
+              <li key={name} className="flex justify-between gap-3 text-xs text-slate">
+                <span className="min-w-0 truncate">{name}</span>
+                <span>{count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {pendingRackets > 0 && (
+          <p className="mt-2 text-xs text-slate">
+            +{pendingRackets} more if every pending entry is approved.
+          </p>
+        )}
+      </div>
     </section>
   );
 }
@@ -198,6 +267,8 @@ function AdminBody() {
   return (
     <div className="space-y-8">
       <Queue registrations={registrations} reload={reload} />
+
+      <Equipment registrations={registrations} />
 
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate">

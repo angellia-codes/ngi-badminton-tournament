@@ -37,6 +37,9 @@ export type Registration = {
   outlet_id: string;
   player_1_name: string;
   player_2_name: string | null;
+  player_1_own_racket: boolean;
+  /** Null on a singles entry, like player_2_name: there is no second player. */
+  player_2_own_racket: boolean | null;
   status: RegistrationStatus;
   submitted_at: string;
   reviewed_at: string | null;
@@ -77,4 +80,16 @@ export type MatchSet = {
 export function teamName(reg: Registration | undefined | null): string {
   if (!reg) return "—";
   return reg.player_2_name ? `${reg.player_1_name} & ${reg.player_2_name}` : reg.player_1_name;
+}
+
+/** 2 for a doubles entry, 1 for singles — player_2_name is the only signal. */
+export function playerCount(reg: Registration): number {
+  return reg.player_2_name ? 2 : 1;
+}
+
+/** How many rackets the committee has to supply for this entry: 0, 1 or 2. */
+export function racketsNeeded(reg: Registration): number {
+  const p1 = reg.player_1_own_racket ? 0 : 1;
+  const p2 = reg.player_2_name && !reg.player_2_own_racket ? 1 : 0;
+  return p1 + p2;
 }
